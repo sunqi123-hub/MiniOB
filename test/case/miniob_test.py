@@ -481,38 +481,11 @@ class CommandRunner:
       result = self.run_connection(command_arg)
     elif 'sort' == command:
       result = self.run_sort(command_arg)
-    elif command.startswith('ensure'):
-      result = self.run_ensure(command, command_arg)
     else:
       _logger.error("No such command %s", command)
       result = False
 
     return result
-  
-  def run_ensure(self, command: str, sql: str):
-    self.__result_writer.write_line(command + " " + sql)
-    result, data = self.__current_client.run_sql("explain " + sql)
-    if result is False:
-      return False
-    if command == "ensure:hashjoin":
-      if len(data.split("HASH_JOIN")) != 2:
-        return False
-    elif command == "ensure:hashjoin*2":
-      if len(data.split("HASH_JOIN")) != 3:
-        return False
-    elif command == "ensure:hashjoin*4":
-      if len(data.split("HASH_JOIN")) != 5:
-        return False
-    elif command == "ensure:nlj":
-      if len(data.split("NESTED_LOOP_JOIN")) != 2:
-        return False
-    elif command == "ensure:nlj*2":
-      if len(data.split("NESTED_LOOP_JOIN")) != 3:
-        return False
-    else:
-      _logger.error("No such ensure command %s", command)
-      return False
-    return True
     
   def run_anything(self, argline: str):
     argline = argline.strip()
@@ -747,7 +720,7 @@ class TestSuite:
 
     result_file_name = test_case.result_file(self.__test_result_base_dir)
     if self.__report_only:
-      shutil.copy(result_tmp_file_name, result_file_name)
+      os.rename(result_tmp_file_name, result_file_name)
       return True
     else:
       result = self.__compare_files(result_tmp_file_name, result_file_name)
@@ -906,7 +879,7 @@ def __init_options():
   realpath = os.path.realpath(__file__)
   current_path = os.path.dirname(realpath)
   if not options.work_dir:
-    options.work_dir = tempfile.gettempdir() + '/miniob'
+    options.work_dir = tempfile.gettempdir() + '/miniob_cq'
     _logger.info('use %s as work directory', options.work_dir)
   if not options.project_dir:
     options.project_dir = os.path.realpath(current_path + '/../..')
@@ -1050,7 +1023,7 @@ def compile(work_dir: str, build_dir: str, cmake_args: str, make_args: str, rebu
   make_command = ["make", "--silent", "-C", build_path]
   if isinstance(make_args, str):
     if not make_args:
-      make_command.append('-j4')
+      make_command.append('-j40')
     else:
       args = make_args.split(';')
       for arg in args:

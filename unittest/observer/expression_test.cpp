@@ -147,11 +147,6 @@ TEST(ArithmeticExpr, get_column)
     Value float_value1((float)1.1);
     Value float_value2((float)2.2);
     Chunk chunk;
-    std::unique_ptr<Column> column_tmp = std::make_unique<Column>(AttrType::INTS, sizeof(int), 1);
-    char data[sizeof(int)];
-    memcpy(data, &int_value1, sizeof(int));
-    column_tmp->append_one(data);
-    chunk.add_column(std::move(column_tmp), 0);
 
     Value int_result;
     Value float_result;
@@ -316,7 +311,7 @@ TEST(AggregateExpr, aggregate_expr_test)
 {
   Value                  int_value(1);
   unique_ptr<Expression> value_expr(new ValueExpr(int_value));
-  AggregateExpr          aggregate_expr(AggregateExpr::Type::SUM, std::move(value_expr));
+  AggregateExpr          aggregate_expr(AggregateType::SUM, std::move(value_expr));
   aggregate_expr.equal(aggregate_expr);
   auto aggregator = aggregate_expr.create_aggregator();
   for (int i = 0; i < 100; i++) {
@@ -325,17 +320,17 @@ TEST(AggregateExpr, aggregate_expr_test)
   Value result;
   aggregator->evaluate(result);
   ASSERT_EQ(result.get_int(), 4950);
-  AggregateExpr::Type aggr_type;
+  AggregateType aggr_type;
   ASSERT_EQ(RC::SUCCESS, AggregateExpr::type_from_string("sum", aggr_type));
-  ASSERT_EQ(aggr_type, AggregateExpr::Type::SUM);
+  ASSERT_EQ(aggr_type, AggregateType::SUM);
   ASSERT_EQ(RC::SUCCESS, AggregateExpr::type_from_string("count", aggr_type));
-  ASSERT_EQ(aggr_type, AggregateExpr::Type::COUNT);
+  ASSERT_EQ(aggr_type, AggregateType::COUNT);
   ASSERT_EQ(RC::SUCCESS, AggregateExpr::type_from_string("avg", aggr_type));
-  ASSERT_EQ(aggr_type, AggregateExpr::Type::AVG);
+  ASSERT_EQ(aggr_type, AggregateType::AVG);
   ASSERT_EQ(RC::SUCCESS, AggregateExpr::type_from_string("max", aggr_type));
-  ASSERT_EQ(aggr_type, AggregateExpr::Type::MAX);
+  ASSERT_EQ(aggr_type, AggregateType::MAX);
   ASSERT_EQ(RC::SUCCESS, AggregateExpr::type_from_string("min", aggr_type));
-  ASSERT_EQ(aggr_type, AggregateExpr::Type::MIN);
+  ASSERT_EQ(aggr_type, AggregateType::MIN);
   ASSERT_EQ(RC::INVALID_ARGUMENT, AggregateExpr::type_from_string("invalid type", aggr_type));
 }
 

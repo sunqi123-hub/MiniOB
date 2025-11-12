@@ -1,3 +1,4 @@
+
 #get_filename_component(<VAR> FileName
 #        PATH|ABSOLUTE|NAME|EXT|NAME_WE|REALPATH
 #        [CACHE])
@@ -7,6 +8,6 @@ FOREACH (F ${ALL_SRC})
     get_filename_component(prjName ${F} NAME_WE)
     MESSAGE("Build ${prjName} according to ${F}")
     ADD_EXECUTABLE(${prjName} ${F})
-    TARGET_LINK_LIBRARIES(${prjName} common pthread dl gtest gtest_main)
-    add_test(NAME ${prjName} COMMAND ${prjName})
+    TARGET_LINK_LIBRARIES(${prjName} common pthread dl observer_static)
+
 ENDFOREACH (F)

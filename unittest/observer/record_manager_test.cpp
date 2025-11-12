@@ -26,7 +26,6 @@ See the Mulan PSL v2 for more details. */
 #include "common/math/integer_generator.h"
 #include "common/thread/thread_pool_executor.h"
 #include "storage/clog/integrated_log_replayer.h"
-#include "storage/record/heap_record_scanner.h"
 #include "gtest/gtest.h"
 
 using namespace std;
@@ -123,7 +122,7 @@ TEST(RecordPageHandler, test_record_page_handler)
   delete record_page_handle;
 }
 
-TEST(RecordScanner, test_record_file_iterator)
+TEST(RecordFileScanner, test_record_file_iterator)
 {
   VacuousLogHandler log_handler;
 
@@ -140,73 +139,66 @@ TEST(RecordScanner, test_record_file_iterator)
   ASSERT_EQ(rc, RC::SUCCESS);
 
   RecordFileHandler file_handler(StorageFormat::ROW_FORMAT);
-  rc = file_handler.init(*bp, log_handler, nullptr, nullptr);
+  rc = file_handler.init(*bp, log_handler, nullptr);
   ASSERT_EQ(rc, RC::SUCCESS);
 
   VacuousTrx        trx;
+  RecordFileScanner file_scanner;
+  rc = file_scanner.open_scan(
+      nullptr /*table*/, *bp, &trx, log_handler, ReadWriteMode::READ_ONLY, nullptr /*condition_filter*/);
+  ASSERT_EQ(rc, RC::SUCCESS);
+
   int    count = 0;
   Record record;
+  while (OB_SUCC(rc = file_scanner.next(record))) {
+    count++;
+  }
+  if (rc == RC::RECORD_EOF) {
+    rc = RC::SUCCESS;
+  }
+  file_scanner.close_scan();
+  ASSERT_EQ(count, 0);
+
   const int        record_insert_num = 1000;
   char             record_data[20];
   std::vector<RID> rids;
-  {
-    HeapRecordScanner file_scanner(
-        nullptr /*table*/, *bp, &trx, log_handler, ReadWriteMode::READ_ONLY, nullptr /*condition_filter*/);
-    rc = file_scanner.open_scan();
+  for (int i = 0; i < record_insert_num; i++) {
+    RID rid;
+    rc = file_handler.insert_record(record_data, sizeof(record_data), &rid);
     ASSERT_EQ(rc, RC::SUCCESS);
-
-    while (OB_SUCC(rc = file_scanner.next(record))) {
-      count++;
-    }
-    if (rc == RC::RECORD_EOF) {
-      rc = RC::SUCCESS;
-    }
-    file_scanner.close_scan();
-    ASSERT_EQ(count, 0);
-
-    for (int i = 0; i < record_insert_num; i++) {
-      RID rid;
-      rc = file_handler.insert_record(record_data, sizeof(record_data), &rid);
-      ASSERT_EQ(rc, RC::SUCCESS);
-      rids.push_back(rid);
-    }
+    rids.push_back(rid);
   }
 
-  {
-    HeapRecordScanner file_scanner(
-        nullptr /*table*/, *bp, &trx, log_handler, ReadWriteMode::READ_ONLY, nullptr /*condition_filter*/);
-    rc = file_scanner.open_scan();
+  rc = file_scanner.open_scan(
+      nullptr /*table*/, *bp, &trx, log_handler, ReadWriteMode::READ_ONLY, nullptr /*condition_filter*/);
+  ASSERT_EQ(rc, RC::SUCCESS);
+
+  count = 0;
+  while (OB_SUCC(rc = file_scanner.next(record))) {
+    count++;
+  }
+  ASSERT_EQ(RC::RECORD_EOF, rc);
+
+  file_scanner.close_scan();
+  ASSERT_EQ(count, rids.size());
+
+  for (int i = 0; i < record_insert_num; i += 2) {
+    rc = file_handler.delete_record(&rids[i]);
     ASSERT_EQ(rc, RC::SUCCESS);
-    count = 0;
-    while (OB_SUCC(rc = file_scanner.next(record))) {
-      count++;
-    }
-    ASSERT_EQ(RC::RECORD_EOF, rc);
-
-    file_scanner.close_scan();
-    ASSERT_EQ(count, rids.size());
-
-    for (int i = 0; i < record_insert_num; i += 2) {
-      rc = file_handler.delete_record(&rids[i]);
-      ASSERT_EQ(rc, RC::SUCCESS);
-    }
   }
 
-  {
-    HeapRecordScanner file_scanner(
-        nullptr /*table*/, *bp, &trx, log_handler, ReadWriteMode::READ_ONLY, nullptr /*condition_filter*/);
-    rc = file_scanner.open_scan();
-    ASSERT_EQ(rc, RC::SUCCESS);
+  rc = file_scanner.open_scan(
+      nullptr /*table*/, *bp, &trx, log_handler, ReadWriteMode::READ_ONLY, nullptr /*condition_filter*/);
+  ASSERT_EQ(rc, RC::SUCCESS);
 
-    count = 0;
-    while (OB_SUCC(rc = file_scanner.next(record))) {
-      count++;
-    }
-    ASSERT_EQ(RC::RECORD_EOF, rc);
-
-    file_scanner.close_scan();
-    ASSERT_EQ(count, rids.size() / 2);
+  count = 0;
+  while (OB_SUCC(rc = file_scanner.next(record))) {
+    count++;
   }
+  ASSERT_EQ(RC::RECORD_EOF, rc);
+
+  file_scanner.close_scan();
+  ASSERT_EQ(count, rids.size() / 2);
 
   bpm->close_file(record_manager_file);
   delete bpm;
@@ -242,7 +234,7 @@ TEST(RecordManager, durability)
   ASSERT_NE(buffer_pool, nullptr);
 
   RecordFileHandler record_file_handler(StorageFormat::ROW_FORMAT);
-  ASSERT_EQ(record_file_handler.init(*buffer_pool, log_handler, nullptr, nullptr), RC::SUCCESS);
+  ASSERT_EQ(record_file_handler.init(*buffer_pool, log_handler, nullptr), RC::SUCCESS);
 
   const int  record_size              = 100;
   const char record_data[record_size] = "hello, world!";
@@ -291,7 +283,7 @@ TEST(RecordManager, durability)
               ASSERT_EQ(record_file_handler.visit_record(rid,
                             [&new_record](Record &record) {
                               memcpy(record.data(), new_record.c_str(), new_record.size());
-                              return true;
+                              return RC::SUCCESS;
                             }),
                   RC::SUCCESS);
 
@@ -351,7 +343,7 @@ TEST(RecordManager, durability)
   ASSERT_EQ(log_handler2.start(), RC::SUCCESS);
 
   RecordFileHandler record_file_handler2(StorageFormat::ROW_FORMAT);
-  ASSERT_EQ(record_file_handler2.init(*buffer_pool2, log_handler2, nullptr, nullptr), RC::SUCCESS);
+  ASSERT_EQ(record_file_handler2.init(*buffer_pool2, log_handler2, nullptr), RC::SUCCESS);
   for (const auto &[rid, record] : record_map) {
     Record record_data;
     ASSERT_EQ(record_file_handler2.get_record(rid, record_data), RC::SUCCESS);

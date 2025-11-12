@@ -1,97 +1,78 @@
-# MiniOB 介绍
+# MiniOB 2024
 
-<div align="left">
+![USTB LOGO](https://github.com/user-attachments/assets/72936f72-9dcb-4873-896f-6d731a01eeec)
 
-[![Chinese Doc](https://img.shields.io/badge/文档-简体中文-blue)](https://oceanbase.github.io/miniob/)
-[![MiniOB stars](https://img.shields.io/badge/dynamic/json?color=blue&label=stars&query=stargazers_count&url=https%3A%2F%2Fapi.github.com%2Frepos%2Foceanbase%2Fminiob)](https://github.com/oceanbase/miniob)
-[![Coverage Status](https://codecov.io/gh/oceanbase/miniob/branch/main/graph/badge.svg)](https://codecov.io/gh/oceanbase/miniob)
-[![HelloGitHub](https://abroad.hellogithub.com/v1/widgets/recommend.svg?rid=62efc8a5bbb64a9fbb1ebb7703446f36&claim_uid=AptH8D2YM3rCGL9&theme=small)](https://hellogithub.com/repository/62efc8a5bbb64a9fbb1ebb7703446f36)
+北京科技大学 我真的参加了系统内核赛
 
-</div>
+队员：[王诺贤](https://bosswnx.xyz)、[廖玮珑](https://soulter.top)、[陈渠](https://blog.virtualfuture.top/)。
 
-MiniOB 是 [OceanBase](https://github.com/oceanbase/oceanbase) 团队基于华中科技大学数据库课程原型，联合多所高校重新开发的、专为零基础的同学设计的数据库入门学习项目。MiniOB 的目标是为在校学生、数据库从业者、爱好者或对基础技术感兴趣的人提供一个友好的数据库学习项目，更好地将理论、实践进行结合，提升同学们的工程实战能力。
+初赛满分通过，全国排名第 19，北京赛区排名第 2，校排名第 1：
 
-MiniOB 整体代码简洁，容易上手，设计了一系列由浅入深的题目，帮助同学们从零基础入门，迅速了解数据库并深入学习数据库内核。MiniOB 简化了许多模块，例如不考虑并发操作、安全特性和复杂的事务管理等功能，以便更好地学习数据库实现原理。我们期望通过 MiniOB 的训练，同学们能够熟练掌握数据库内核模块的功能和协同关系，并具备一定的工程编码能力，例如内存管理、网络通信和磁盘 I/O 处理等, 这将有助于同学在未来的面试和工作中脱颖而出。
+![image](https://github.com/user-attachments/assets/abb3adff-a905-4f54-8025-618011b4e061)
 
-# [文档](https://oceanbase.github.io/miniob/)
-代码配套设计文档和相关代码注释已经生成文档，并通过 GitHub Pages 发布。您可以直接访问：[MiniOB GitHub Pages](https://oceanbase.github.io/miniob/).
+开发记录：
 
-## 快速上手
+- [OceanBase 2024 初赛 MiniOB 开发记录](https://zhuanlan.zhihu.com/p/5953505884)
+- [OceanBase 数据库内核实现赛 / 自己实现一个数据库](https://blog.soulter.top/posts/2024-oceanbase-database.html)
+- [OceanBase 数据库大赛初赛结束之后](https://blog.virtualfuture.top/posts/miniob/)
 
-为了帮助开发者更好地上手并学习 MiniOB，建议阅读以下内容：
+## 开发规范
 
-1. [MiniOB 框架介绍](https://oceanbase.github.io/miniob/design/miniob-architecture/)
-2. [如何编译 MiniOB 源码](https://oceanbase.github.io/miniob/how_to_build/)
-3. [如何运行 MiniOB](https://oceanbase.github.io/miniob/how_to_run/)
-4. [使用 GitPod 开发 MiniOB](https://oceanbase.github.io/miniob/dev-env/dev_by_gitpod/)
-5. [doxygen 代码文档](https://oceanbase.github.io/miniob/design/doxy/html/index.html)
+- 每次提交必须过编译；
+- 提交前必须进行代码格式化；
+- commit message 按照[规范](https://zhuanlan.zhihu.com/p/90281637)编写；
+- ……
 
-为了帮助大家更好地学习数据库基础知识，OceanBase社区提供了一系列教程。更多文档请参考 [MiniOB GitHub Pages](https://oceanbase.github.io/miniob/)。建议学习：
+## 关于 build system
 
-1. [《从0到1数据库内核实战教程》  视频教程](https://open.oceanbase.com/activities/4921877?id=4921946)
-2. [《从0到1数据库内核实战教程》  基础讲义](https://github.com/oceanbase/kernel-quickstart)
-3. [《数据库管理系统实现》  华中科技大学实现教材](https://oceanbase.github.io/miniob/lectures/index.html)
+原 miniob 的构建系统包含以下功能:
 
-## 系统架构
+- release 模式和 debug 模式的构建
+- 强制消除所有编译器警告
+- 开启 address sanitizer (检测指针越界、悬垂指针等内存错误)
 
-MiniOB 整体架构如下图所示:
+添加了以下功能:
 
-<img src="./docs/docs/design/images/miniob-architecture.svg" width = "60%" alt="InternalNode" align=center />
+- 在 linux + gcc 平台开启 undefined behavior sanitizer，检测 UB（救大命了）
+- 开启了 C++ 标准库的 debug 功能，插入检查代码，运行时检测 STL 容器相关的错误
 
-其中:
+参考:  
 
-- 网络模块(NET Service)：负责与客户端交互，收发客户端请求与应答；
-- SQL解析(Parser)：将用户输入的SQL语句解析成语法树；
-- 语义解析模块(Resolver)：将生成的语法树，转换成数据库内部数据结构；
-- 查询优化(Optimizer)：根据一定规则和统计数据，调整/重写语法树。(部分实现)；
-- 计划执行(Executor)：根据语法树描述，执行并生成结果；
-- 存储引擎(Storage Engine)：负责数据的存储和检索；
-- 事务管理(MVCC)：管理事务的提交、回滚、隔离级别等。当前事务管理仅实现了MVCC模式，因此直接以MVCC展示；
-- 日志管理(Redo Log)：负责记录数据库操作日志；
-- 记录管理(Record Manager)：负责管理某个表数据文件中的记录存放；
-- B+ Tree：表索引存储结构；
-- 会话管理：管理用户连接、调整某个连接的参数；
-- 元数据管理(Meta Data)：记录当前的数据库、表、字段和索引元数据信息；
-- 客户端(Client)：作为测试工具，接收用户请求，向服务端发起请求。
+- [UndefinedBehaviorSanitizer — Clang 20.0.0git documentation](https://clang.llvm.org/docs/UndefinedBehaviorSanitizer.html)  
+- [AddressSanitizer · google/sanitizers Wiki](https://github.com/google/sanitizers/wiki/AddressSanitizer)  
+- [Instrumentation Options (Using the GNU Compiler Collection (GCC))](https://gcc.gnu.org/onlinedocs/gcc/Instrumentation-Options.html)
 
+**Note:** 由于 CMake 使用 file glob 添加源文件，任何新建的源文件都需要、也只需要重新执行 `cmake ..` 就能加入编译
 
-# [OceanBase 大赛](https://open.oceanbase.com/competition)
+## 一些资料
 
-全国大学生计算机系统能力大赛（以下简称“大赛”）是由系统能力培养研究专家组发起，全国高等学校计算机教育研究会、系统能力培养研究项目示范高校共同主办、OceanBase 承办，面向高校大学生的全国性数据库大赛。
-大赛面向全国爱好数据库的高校学生，以“竞技、交流、成长”为宗旨，搭建基于赛事的技术交流平台，促进高校创新人才培养机制，不仅帮助学生从0开始系统化学习 OceanBase 数据库理论知识，提升学生数据库实践能力，更能帮助学生走向企业积累经验，促进国内数据库人才的发展，碰撞出创新的火花。
+- clang 出现 `'iostream' file not found`: https://blog.csdn.net/qq_50901812/article/details/131408137
 
-OceanBase 初赛基于一套适合初学者实践的数据库实训平台 MiniOB，代码量少，易于上手学习，包含了数据库的各个关键模块，是一个系统性的数据库学习平台。基于该平台设置了一系列由浅入深的题目，以帮助同学们更好"零"基础入门。
+## 关于 VSCode 
 
-为了帮助大家能在大赛中取得好成绩，我们提供了一系列的教程和指导，帮助大家更好地学习数据库基础知识，更好地完成大赛题目。
-欢迎大家查看[《从0到1数据库内核实战教程》  视频教程](https://open.oceanbase.com/course/427)，视频中包含了代码框架的介绍和一些入门题目的讲解。
-> 由于MiniOB是一个持续演进的产品，视频教程中有些内容会与最新代码有冲突，建议大家参考讲解中的思路。
+前置要求：开发机器上安装 clangd，clang-tidy，clang-format
 
-大赛的初赛是在MiniOB上进行的，同学们可以在前几届的题目上进行提前训练，可以让自己比别人提前一步。大家在日常训练时可以在[MiniOB 训练营](https://open.oceanbase.com/train) 上提交代码进行测试。
+插件推荐：
 
-在提交前, 请参考并学习 [训练营使用说明](https://oceanbase.github.io/miniob/dev-env/how_to_submit_for_testing/)。
+- clangd 用于替代 cpptools，获得更好的代码补全和跳转
+- clang-format 用于调用 clang-format 完成格式化
+- git-commit-plugin 用于生成符合规范的 git commit message
+   
+需要设置：
 
-如果大家在大赛中或使用训练营时遇到一些问题，请先查看[大赛 FAQ](https://ask.oceanbase.com/t/topic/35601465)。
+- `C_Cpp.intelliSenseEngine` 设为 Disable，禁用 intelliSence，因为会和 clangd 冲突
+- `C_Cpp.codeAnalysis.clangTidy.enabled` 设为 True，使用 clang-tidy 静态分析器
 
-# 在线开发平台
+## 关于 clang-tidy
 
-搭建开发环境是一个比较耗时而且繁琐的事情，特别是对于初学者。为了让大家更快地上手 MiniOB，我们为大家提供了一个[开源学堂在线编程环境](./docs/docs/dev-env/cloudlab_setup.md)，推荐大家使用开源学堂在线编程环境进行实验，在线编程环境已经提供了可以直接用于 MiniOB 编程的环境，便于大家快速开始。对于希望在本地准备开发环境的同学，[这篇文档](./docs/docs/dev-env/introduction.md) 中已经介绍的十分详细，请先认真阅读。如果仍有疑问，欢迎提问，也非常欢迎刚刚入门的同学分享自己准备开发环境的经验。
+开启了三个 checker
 
-# Contributing
+- `clang-analyzer-*` clang静态分析检查器
+- `google-*` 检查代码是否符合 google 的 C++代码规范
+- `modernize-*` 检查代码是否符合现代 C++ 的代码规范
+   
+如果某个规则出现过于频繁，可以在 `.clang-tidy` 中排除，语法为 `-rule-name`  
+也可以在希望屏蔽 clang-tidy 警告的行加上 `//NOLINT` 注释
 
-OceanBase 社区热情欢迎每一位对数据库技术热爱的开发者，期待与您携手开启思维碰撞之旅。无论是文档格式调整或文字修正、问题修复还是增加新功能，都是参与和贡献 OceanBase 社区的方式之一。MiniOB 现在开放了一些[新功能的开发](https://github.com/oceanbase/miniob/issues?q=is%3Aopen+is%3Aissue+label%3A%22help+wanted%22)，欢迎有兴趣的同学一起共建，希望我们共同成长。如果你对MiniOB不熟悉也没关系，可以直接联系我们，我们将会有人指导上手。现在就开始您的首次贡献吧！更多详情，请参考 [社区贡献](CONTRIBUTING.md)。
-
-# Contributors
-感谢所有为 MiniOB 项目做出贡献的同学们！
-
-<a href="https://github.com/oceanbase/miniob/graphs/contributors"><img src="https://contributors-img.web.app/image?repo=oceanbase/miniob&width=890" /></a>
-
-# License
-
-MiniOB 采用 [木兰宽松许可证，第2版](https://license.coscl.org.cn/MulanPSL2), 可以自由拷贝和使用源码, 当做修改或分发时, 请遵守 [木兰宽松许可证，第2版](https://license.coscl.org.cn/MulanPSL2). 
-
-# 社区组织
-
-- [OceanBase 社区交流群 33254054](https://h5.dingtalk.com/circle/healthCheckin.html?corpId=dingd88359ef5e4c49ef87cda005313eea7a&1fe0ca69-72d=16c86a07-83c&cbdbhh=qwertyuiop&origin=1)
-- [OceanBase 大赛官方交流群 35326455](https://qr.dingtalk.com/action/joingroup?code=v1,k1,g61jI0RwHQA8UMocuTbys2cyM7vck2c6jNE87vdxz9o=&_dt_no_comment=1&origin=11)
-- [OceanBase 官方论坛](https://ask.oceanbase.com/)
-- MiniOB 开发者微信群(添加 OBCE888 为好友，备注 MiniOB SIG，邀请入群)
+参考：  
+- [Clang-Tidy — Extra Clang Tools 20.0.0git documentation](https://clang.llvm.org/extra/clang-tidy/)
